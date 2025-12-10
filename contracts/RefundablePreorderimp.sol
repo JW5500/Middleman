@@ -32,6 +32,14 @@ contract RefundablePreorderImp is RefundablePreorder {
 
     //constructors
     constructor(string memory productName_, uint256 unitPrice_, uint256 deadline_){
+        require(bytes(productName_).length > 0, "Product name is required");
+        require(unitPrice_ > 0, "Unit price must be greater than 0");
+        require(deadline_ > block.timestamp, "Deadline has to be more an a day");
+
+        _productName = productName_;
+        _unitPrice = unitPrice_;
+        _deadline = deadline_;
+
     }
 
     //inherited functions
@@ -44,6 +52,10 @@ contract RefundablePreorderImp is RefundablePreorder {
     }
 
     function markProductDelivered() external override OnlySeller(){
+        require(!_delivered, "Already delivered");
+        _delivered = true;
+
+        emit ProductDelivered(block.timestamp);
     }
 
     function withdrawFunds() external override OnlySeller(){
@@ -55,7 +67,15 @@ contract RefundablePreorderImp is RefundablePreorder {
     }
 
     function getPreorderInfo() external view override returns(string memory productName_, uint256 unitPrice_, uint256 deadline_, uint256 totalQuantity_, uint256 totalCollected_, address seller_, bool delivered_, bool fundswithdrawn_){
+        return (
+        productName_ = _productName,
+        unitPrice_ = _unitPrice,
+        deadline_ = _deadline,
+        totalQuantity_ = _totalQuantity,
+        totalCollected_ = _totalCollected,
+        seller_ = _seller,
+        delivered_ = _delivered,
+        fundswithdrawn_ = _fundsWithdrawn
+        );
     }
-
-
 }
