@@ -34,6 +34,9 @@ contract RefundablePreorderImp is RefundablePreorder {
     mapping(address => bytes32) private _codeHash;             // Activation-code hash per buyer
     mapping(address => bool) private _codeSet;                 // Hashed code set for buyer?
 
+// Unique salt used in hashing codes (prevents dictionary attacks)
+    bytes32 private immutable _salt;
+
     event ReceiptConfirmed(address indexed buyer, uint256 timestamp);
     event ActivationCodeHashSet(address indexed buyer, bytes32 codeHash);
 
@@ -69,6 +72,8 @@ contract RefundablePreorderImp is RefundablePreorder {
         _unitPrice = unitPrice_;
         _deadline = deadline_;
         _seller = msg.sender;
+        // create a unique salt for this contract deployment
+        _salt = keccak256(abi.encodePacked(block.timestamp, msg.sender));
     }
 
     // buyers place preorder and send ETH; ETH gets locked inside contract
@@ -116,8 +121,8 @@ contract RefundablePreorderImp is RefundablePreorder {
         require(_buyers[buyerAddr].amountPaid > 0, "No preorder found"); // Ensure the buyer actually placed a preorder
         require(!_codeSet[buyerAddr], "Already set");  // Ensure the code hasn’t already been set for this buyer
 
-       // Store the hash and mark that it has been set
-        _codeHash[buyerAddr] = hash;
+       // store salted hash: keccak256(hash + salt)
+        _codeHash[buyerAddr] = keccak256(abi.encodePacked(hash, _salt));
         _codeSet[buyerAddr] = true;
 
         emit ActivationCodeHashSet(buyerAddr, hash);
@@ -134,8 +139,11 @@ contract RefundablePreorderImp is RefundablePreorder {
         require(_codeSet[msg.sender], "Code not set"); // Ensure seller has set a code for this buyer
 
 
-       // Hash the submitted code and compare with stored hash
-        bytes32 submitted = keccak256(abi.encodePacked(code));
+    // hash plaintext code → hash(code)
+        bytes32 unhashed = keccak256(abi.encodePacked(code));
+
+        // salted hash: hash(hash(code) + salt)
+        bytes32 finalHash = keccak256(abi.encodePacked(unhashed, _salt));
         require(submitted == _codeHash[msg.sender], "Invalid activation code");
 
       // Mark buyer as confirmed and update overall state
