@@ -113,9 +113,10 @@ contract RefundablePreorderImp is RefundablePreorder {
         external
         onlySeller
     {
-        require(_buyers[buyerAddr].amountPaid > 0, "No preorder found");
-        require(!_codeSet[buyerAddr], "Already set");
+        require(_buyers[buyerAddr].amountPaid > 0, "No preorder found"); // Ensure the buyer actually placed a preorder
+        require(!_codeSet[buyerAddr], "Already set");  // Ensure the code hasn’t already been set for this buyer
 
+       // Store the hash and mark that it has been set
         _codeHash[buyerAddr] = hash;
         _codeSet[buyerAddr] = true;
 
@@ -124,17 +125,20 @@ contract RefundablePreorderImp is RefundablePreorder {
 
     // buyers confirm receipt using activation code
     function confirmReceiptWithCode(string calldata code) external {
-        require(_delivered, "Not delivered yet");
+        require(_delivered, "Not delivered yet");        // Ensure the product has been delivered
 
         BuyerInfo storage buyer = _buyers[msg.sender];
-        require(buyer.amountPaid > 0, "No preorder found");
-        require(!buyer.confirmed, "Already confirmed");
-        require(!buyer.refunded, "Refunded buyer can't confirm");
-        require(_codeSet[msg.sender], "Code not set");
+        require(buyer.amountPaid > 0, "No preorder found"); // Buyer must have placed a preorder
+        require(!buyer.confirmed, "Already confirmed"); // Prevent double confirmation
+        require(!buyer.refunded, "Refunded buyer can't confirm"); // Prevent refunded buyers from confirming
+        require(_codeSet[msg.sender], "Code not set"); // Ensure seller has set a code for this buyer
 
+
+       // Hash the submitted code and compare with stored hash
         bytes32 submitted = keccak256(abi.encodePacked(code));
         require(submitted == _codeHash[msg.sender], "Invalid activation code");
 
+      // Mark buyer as confirmed and update overall state
         buyer.confirmed = true;
         _anyBuyerConfirmed = true;
 
